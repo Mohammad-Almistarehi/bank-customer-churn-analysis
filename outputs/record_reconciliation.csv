@@ -1,0 +1,7 @@
+Step,Records
+Raw file,12507
+Less: duplicate copies removed,12
+Less: invalid age (<18 or >100),6
+Less: missing credit score,5
+Less: churn date before join date,4
+Clean records,12480

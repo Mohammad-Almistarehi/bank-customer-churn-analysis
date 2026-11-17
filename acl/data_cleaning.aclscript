@@ -1,0 +1,57 @@
+COMMENT
+  Bank Customer Churn - data cleaning and calculated fields in ACL Analytics
+  Input : bank_churn_customers.csv imported as table Bank_Churn_Raw
+          (Data > Data Definition Wizard; CustomerID as character,
+           JoinDate and ChurnDate as dates YYYY-MM-DD, numeric fields as numbers)
+  Output: Bank_Churn_Clean (12,480 records), exported to Diligent One Results
+END
+
+SET SAFETY OFF
+
+COMMENT 1. Find duplicate customers
+OPEN Bank_Churn_Raw
+DUPLICATES ON CustomerID PRESORT TO "Dup_Customers" OPEN
+
+COMMENT 2. Keep one copy of each customer
+OPEN Bank_Churn_Raw
+SORT ON CustomerID TO "Bank_Churn_Sorted" OPEN
+EXTRACT RECORD IF CustomerID <> RECOFFSET(CustomerID, -1) TO "Bank_Churn_Dedup" OPEN
+
+COMMENT 3-5. Count the invalid records
+COUNT IF Age < 18 OR Age > 100
+COUNT IF CreditScore = 0
+COUNT IF Churned = 1 AND ChurnDate < JoinDate
+
+COMMENT 6. Build the clean table
+EXTRACT RECORD IF Age >= 18 AND Age <= 100 AND CreditScore > 0 AND NOT (Churned = 1 AND ChurnDate < JoinDate) TO "Bank_Churn_Clean" OPEN
+
+COMMENT 7. Calculated fields used in the dashboard
+DEFINE FIELD AgeGroup COMPUTED
+
+"18-30" IF Age <= 30
+"31-40" IF Age <= 40
+"41-50" IF Age <= 50
+"51-60" IF Age <= 60
+"61-70" IF Age <= 70
+"71+"
+
+DEFINE FIELD CreditScoreGroup COMPUTED
+
+"300-499" IF CreditScore < 500
+"500-599" IF CreditScore < 600
+"600-699" IF CreditScore < 700
+"700-799" IF CreditScore < 800
+"800-850"
+
+DEFINE FIELD BalanceGroup COMPUTED
+
+"1. Zero" IF Balance_JOD = 0
+"2. Up to 5K" IF Balance_JOD <= 5000
+"3. 5K-20K" IF Balance_JOD <= 20000
+"4. 20K-50K" IF Balance_JOD <= 50000
+"5. 50K+"
+
+COMMENT 8. Export to Diligent One Results (replace the table ID and data center)
+COMMENT EXPORT FIELDS ALL ACLGRC TO "<table_id>@<data_center>" OVERWRITE
+
+SET SAFETY ON
